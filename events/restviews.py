@@ -26,7 +26,6 @@ class EventQueryViewset(viewsets.ViewSet):
         month = request.query_params.get('month')
         if month is None:
             return r404({'detail': f'month value must be specified'})
-        # if month not in self.months:
         try:
             month = datetime.strptime(month, '%b').month
         except:

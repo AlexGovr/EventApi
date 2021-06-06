@@ -25,9 +25,7 @@ class Event(models.Model):
 
     @classmethod
     def get_month_occurrences(cls, month):
-        print(month)
         earliest = datetime.datetime.now(tz.UTC).replace(month=month, day=1)
-        print(earliest)
         until = earliest + relativedelta.relativedelta(months=1)
         objects = []
         for o in cls.objects.filter(date__gte=earliest, tickets__gt=0):
