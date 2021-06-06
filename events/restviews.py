@@ -3,8 +3,10 @@ from datetime import datetime
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .models import Event
-from .serializers import EventQuerySerializer
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.mixins import CreateModelMixin
+from .models import Event, Transaction
+from .serializers import EventQuerySerializer, TransactionSerializer
 
 
 class EventQueryViewset(viewsets.ViewSet):
@@ -35,6 +37,23 @@ class EventQueryViewset(viewsets.ViewSet):
         objects = Event.get_month_occurrences(month)
         srl = EventQuerySerializer(objects, many=True)
         return Response(srl.data, status=status.HTTP_200_OK)
+
+
+class TransactionViewSet(CreateModelMixin, viewsets.GenericViewSet):
+    serializer_class = TransactionSerializer
+    queryset = Transaction.objects.none()
+    permission_classes = [IsAuthenticated]
+
+    # @action(methods=['POST'], detail=False)
+    # def transaction(self, request, *args, **kwargs):
+    #     '''the same method as rest_framework.mixins.CreateModelMixin.create
+    #     but only POST method is allowed'''
+    #     return self.create(request, *args, **kwargs)
+        # serializer = self.get_serializer(data=request.data)
+        # serializer.is_valid(raise_exception=True)
+        # self.perform_create(serializer)
+        # headers = self.get_success_headers(serializer.data)
+        # return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 def r404(data):
