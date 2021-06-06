@@ -1,5 +1,6 @@
 
 from rest_framework import serializers
+from .models import Transaction
 
 
 class EventQuerySerializer(serializers.Serializer):
@@ -8,3 +9,11 @@ class EventQuerySerializer(serializers.Serializer):
     tickets = serializers.IntegerField()
     cost = serializers.FloatField()
     date = serializers.DateTimeField()
+
+
+class TransactionSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Transaction
+        fields = '__all__'
+        read_only = '__all__'#['transaction_id', 'event']
