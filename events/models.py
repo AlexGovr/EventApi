@@ -4,6 +4,7 @@ import datetime
 from dateutil import rrule, relativedelta, tz
 from django.db import models
 from django.contrib.auth import get_user_model
+from rest_framework.exceptions import ValidationError
 
 
 User = get_user_model()
@@ -53,9 +54,16 @@ class Event(models.Model):
 
 
 class Transaction(models.Model):
-    event = models.OneToOneField(Event, on_delete=models.RESTRICT)
+    event = models.ForeignKey(Event, on_delete=models.RESTRICT)
     transaction_id = models.IntegerField(null=False, blank=False, unique=True)
     user_id = models.ForeignKey(User, on_delete=models.RESTRICT)
+
+    def save(self, *args, **kwargs):
+        if self.event.tickets <= 0:
+            raise ValidationError('error: no tickets for this event')
+        self.event.tickets -= 1
+        self.event.save()
+        super().save(*args, **kwargs)
 
 
 class EventClone:
