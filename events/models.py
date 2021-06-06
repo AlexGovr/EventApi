@@ -5,10 +5,17 @@ class Event(models.Model):
     city = models.CharField(max_length=60)
     tickets = models.IntegerField()
     cost = models.FloatField()
-    date_time = models.DateTimeField()
-    periodicity = models.CharField(max_length=10, choices = (
+    # serves as a starting point for periodic events
+    date = models.DateTimeField()
+    periodicity = models.CharField(max_length=10, choices=(
         ('yearly', 'yearly'),
         ('monthly', 'monthly'),
         ('weekly', 'weekly'),
         ('daily', 'daily'),
     ))
+
+    def get_month_occurrences(self, month):
+        pass
+
+    def get_upcoming_occurences(self, city):
+        pass
