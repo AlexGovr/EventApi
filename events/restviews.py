@@ -16,7 +16,9 @@ class EventQueryViewset(viewsets.ViewSet):
 
     @action(detail=False, url_path='upcoming')
     def get_upcoming_occurrences(self, request):
-        city = request.query_params['city']
+        city = request.get('city')
+        if city is None:
+            return r404({'detail': f'city value must be specified'})
         objects = Event.get_upcoming_occurences(city)
         srl = EventQuerySerializer(objects, many=True)
         return Response(srl.data, status=status.HTTP_200_OK)
