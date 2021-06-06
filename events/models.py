@@ -1,8 +1,7 @@
 from django.db import models
-from swingtime import models as stmodels
 
 
-class Event(stmodels.Event):
+class Event(models.Model):
     city = models.CharField(max_length=60)
     tickets = models.IntegerField()
     cost = models.FloatField()
