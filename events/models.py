@@ -8,15 +8,21 @@ class Event(models.Model):
     cost = models.FloatField()
     # serves as a starting point for periodic events
     date = models.DateTimeField()
-    periodicity = models.CharField(max_length=10, choices=(
-        ('yearly', 'yearly'),
-        ('monthly', 'monthly'),
-        ('weekly', 'weekly'),
-        ('daily', 'daily'),
-    ))
+    periodicity = models.CharField(
+        max_length=10,
+        choices=(
+            ('yearly', 'yearly'),
+            ('monthly', 'monthly'),
+            ('weekly', 'weekly'),
+            ('daily', 'daily'),
+            ('one-off', 'one-off'),
+            ),
+        default='one-off')
 
-    def get_month_occurrences(self, month):
-        pass
-
-    def get_upcoming_occurences(self, city):
-        pass
+    @classmethod
+    def get_month_occurrences(cls, month):
+        return cls.objects.all()
+    
+    @classmethod
+    def get_upcoming_occurences(cls, city):
+        return cls.objects.filter(city=city)
