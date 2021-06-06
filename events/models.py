@@ -1,8 +1,12 @@
 
+
 import datetime
 from dateutil import rrule, relativedelta, tz
 from django.db import models
+from django.contrib.auth import get_user_model
 
+
+User = get_user_model()
 
 class Event(models.Model):
     title = models.CharField(max_length=200)
@@ -46,6 +50,12 @@ class Event(models.Model):
             else:
                 objects.append(o)
         return objects
+
+
+class Transaction(models.Model):
+    event = models.OneToOneField(Event, on_delete=models.RESTRICT)
+    transaction_id = models.IntegerField(null=False, blank=False, unique=True)
+    user_id = models.ForeignKey(User, on_delete=models.RESTRICT)
 
 
 class EventClone:
