@@ -16,4 +16,4 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = '__all__'
-        read_only = '__all__'#['transaction_id', 'event']
+        read_only = '__all__'

@@ -11,11 +11,6 @@ from .serializers import EventQuerySerializer, TransactionSerializer
 
 class EventQueryViewset(viewsets.ViewSet):
 
-    months = ('dec', 'jan', 'feb',
-              'mar', 'apr', 'may',
-              'jun', 'jul', 'aug',
-              'sep', 'oct', 'nov')
-
     @action(detail=False, url_path='upcoming')
     def get_upcoming_occurrences(self, request):
         city = request.get('city')
@@ -43,17 +38,6 @@ class TransactionViewSet(CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = TransactionSerializer
     queryset = Transaction.objects.none()
     permission_classes = [IsAuthenticated]
-
-    # @action(methods=['POST'], detail=False)
-    # def transaction(self, request, *args, **kwargs):
-    #     '''the same method as rest_framework.mixins.CreateModelMixin.create
-    #     but only POST method is allowed'''
-    #     return self.create(request, *args, **kwargs)
-        # serializer = self.get_serializer(data=request.data)
-        # serializer.is_valid(raise_exception=True)
-        # self.perform_create(serializer)
-        # headers = self.get_success_headers(serializer.data)
-        # return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 def r404(data):
