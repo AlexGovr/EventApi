@@ -16,12 +16,15 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from events.restviews import EventQueryViewset, TransactionViewSet
+from events.restviews import (EventQueryViewset,
+                             TransactionViewSet,
+                             EventViewset)
 
 
 router = DefaultRouter(trailing_slash=False)
 router.register('get-events', EventQueryViewset, basename='event')
 router.register('buy-ticket', TransactionViewSet)
+router.register('event', EventViewset)
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -6,10 +6,23 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.mixins import CreateModelMixin
 from .models import Event, Transaction
-from .serializers import EventQuerySerializer, TransactionSerializer
+from .serializers import (EventQuerySerializer,
+                          EventSerializer,
+                          TransactionSerializer)
+
+
+class EventViewset(viewsets.ModelViewSet):
+    serializer_class = EventSerializer
+    queryset = Event.objects.all()
+    permission_classes = [IsAuthenticated]
 
 
 class EventQueryViewset(viewsets.ViewSet):
+
+    months = ('dec', 'jan', 'feb',
+              'mar', 'apr', 'may',
+              'jun', 'jul', 'aug',
+              'sep', 'oct', 'nov')
 
     @action(detail=False, url_path='upcoming')
     def get_upcoming_occurrences(self, request):
