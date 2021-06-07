@@ -29,27 +29,33 @@ class Event(models.Model):
         blank=False)
 
     @classmethod
-    def get_month_occurrences(cls, month):
+    def get_month_occurrences(cls, month, title):
         earliest = datetime.datetime.now(tz.UTC).replace(month=month, day=1)
         until = earliest + relativedelta.relativedelta(months=1)
-        objects = []
-        for o in cls.objects.filter(date__gte=earliest, tickets__gt=0):
-            if o.periodicity != 'one-off':
-                objects.extend(get_occurrences(o.date, until, o.periodicity, o))
-            else:
-                objects.append(o)
+        objects = list(cls.objects.filter(date__gte=earliest,
+                                          title=title,
+                                          tickets__gt=0,
+                                          periodicity='one-off'))
+        periodic = list(
+            cls.objects.exclude(periodicity='one-off').filter(title=title, tickets__gt=0)
+        )
+        for o in periodic:
+            objects += get_occurrences(o.date, until, o)
         return objects
 
     @classmethod
     def get_upcoming_occurences(cls, city):
         earliest = datetime.datetime.now(tz.UTC)
         until = earliest + relativedelta.relativedelta(months=1)
-        objects = []
-        for o in cls.objects.filter(date__gte=earliest, city=city, tickets__gt=0):
-            if o.periodicity != 'one-off':
-                objects.extend(get_occurrences(o.date, until, o.periodicity, o))
-            else:
-                objects.append(o)
+        objects = list(cls.objects.filter(date__gte=earliest,
+                                          city=city,
+                                          tickets__gt=0,
+                                          periodicity='one-off'))
+        periodic = list(
+            cls.objects.exclude(periodicity='one-off').filter(city=city, tickets__gt=0)
+        )
+        for o in periodic:
+            objects += get_occurrences(o.date, until, o)
         return objects
 
 
@@ -80,9 +86,15 @@ class EventClone:
             setattr(self, attr, val)
 
 
-def get_occurrences(date, until, freq, event):
+def get_occurrences(date, until, event):
+    freq = event.periodicity
+    now = datetime.datetime.now(tz.UTC)
+    curmonth = now.month
+    nextmonth = (curmonth + 1) * (curmonth <= 12)
+    # limit rrule occurences
+    months = [curmonth, nextmonth]
     # retrive rrule corresponding freq value
     rrule_freq = getattr(rrule, freq.upper())
     # cast datetimes via rrule
-    occur = list(rrule.rrule(rrule_freq, dtstart=date, until=until))
-    return [EventClone(event, date=dt) for dt in occur]
+    occur = list(rrule.rrule(rrule_freq, dtstart=date, until=until, bymonth=months))
+    return [EventClone(event, date=dt) for dt in occur if dt >= now]
