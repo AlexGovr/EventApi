@@ -1,7 +1,12 @@
 
 from rest_framework import serializers
-from .models import Transaction
+from .models import Event, Transaction
 
+
+class EventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Event
+        fields = '__all__'
 
 class EventQuerySerializer(serializers.Serializer):
     title = serializers.CharField(max_length=200)
@@ -12,7 +17,6 @@ class EventQuerySerializer(serializers.Serializer):
 
 
 class TransactionSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Transaction
         fields = '__all__'
