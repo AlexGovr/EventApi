@@ -42,7 +42,7 @@ class Event(models.Model):
             cls.objects.exclude(periodicity='one-off').filter(tickets__gt=0, **kwargs)
         )
         for o in periodic:
-            objects += get_occurrences(o.date, until, o)
+            objects += get_occurrences(o, until)
         return objects
 
     @classmethod
@@ -57,7 +57,7 @@ class Event(models.Model):
             cls.objects.exclude(periodicity='one-off').filter(city=city, tickets__gt=0)
         )
         for o in periodic:
-            objects += get_occurrences(o.date, until, o)
+            objects += get_occurrences(o, until)
         return objects
 
 
@@ -90,7 +90,7 @@ class EventClone:
             setattr(self, attr, val)
 
 
-def get_occurrences(date, until, event):
+def get_occurrences(event, until):
     freq = event.periodicity
     now = datetime.datetime.now(tz.UTC)
     curmonth = now.month
@@ -100,5 +100,5 @@ def get_occurrences(date, until, event):
     # retrive rrule corresponding freq value
     rrule_freq = getattr(rrule, freq.upper())
     # cast datetimes via rrule
-    occur = list(rrule.rrule(rrule_freq, dtstart=date, until=until, bymonth=months))
+    occur = list(rrule.rrule(rrule_freq, dtstart=event.date, until=until, bymonth=months))
     return [EventClone(event, date=dt) for dt in occur if dt >= now]
