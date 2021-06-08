@@ -14,6 +14,7 @@ class EventQuerySerializer(serializers.Serializer):
     tickets = serializers.IntegerField()
     cost = serializers.FloatField()
     date = serializers.DateTimeField()
+    id = serializers.IntegerField()
 
 
 class PaymentSerializer(serializers.ModelSerializer):

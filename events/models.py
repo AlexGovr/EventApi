@@ -114,7 +114,7 @@ class EventClone:
     '''simple Event object simulation
     used to cast event occurences'''
 
-    fields = ['title', 'city', 'cost', 'tickets', ]
+    fields = ['title', 'city', 'cost', 'tickets', 'id', ]
 
     def __init__(self, event, **attrs):
         self.event_object = event
