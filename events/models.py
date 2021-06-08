@@ -38,7 +38,6 @@ class Event(models.Model):
         objects = list(cls.objects.filter(date__gte=earliest,
                                           periodicity='one-off',
                                           **kwargs))
-        test = list(cls.objects.filter(**kwargs))
         periodic = list(
             cls.objects.exclude(periodicity='one-off').filter(**kwargs)
         )
@@ -56,7 +55,7 @@ class Event(models.Model):
                                           tickets__gt=0,
                                           periodicity='one-off'))
         periodic = list(
-            cls.objects.exclude(periodicity='one-off').filter(city=city, tickets__gt=0)
+            cls.objects.filter(city=city, tickets__gt=0).exclude(periodicity='one-off')
         )
         periodic = cls.init_periodic_tickets(periodic)
         for o in periodic:
@@ -73,6 +72,7 @@ class Event(models.Model):
             if tickets is not None:
                 o.date = tickets.date
         return objects
+
 
 class TicketsLeft(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
