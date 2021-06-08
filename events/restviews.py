@@ -43,7 +43,6 @@ class EventQueryViewset(viewsets.ViewSet):
             month = parse_month(month)
         except:
             return r400({'detail': f'month value must be one of {self.months}, not "{month}"'})
-        print(month)
         objects = Event.get_month_occurrences(month, title)
         srl = EventQuerySerializer(objects, many=True)
         return Response(srl.data, status=status.HTTP_200_OK)
@@ -58,7 +57,6 @@ class PaymentViewSet(CreateModelMixin, viewsets.GenericViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         date = request.data.get('date')
-        print(date)
         if date is None:
             return r400({'detail': 'date value must be specified'})
         try:

@@ -31,19 +31,20 @@ class Event(models.Model):
 
     @classmethod
     def get_month_occurrences(cls, month, title):
-        earliest = datetime.datetime.now(tz.UTC).replace(month=month, day=1)
+        earliest = datetime.datetime.now(tz.UTC)
+        earliest = earliest.replace(month=month, day=1, hour=0, minute=0, second=0)
         until = earliest + relativedelta.relativedelta(months=1)
-        until -= datetime.timedelta(days=1)
         kwargs = {'title': title} if title else {}
         objects = list(cls.objects.filter(date__gte=earliest,
                                           periodicity='one-off',
                                           **kwargs))
+        test = list(cls.objects.filter(**kwargs))
         periodic = list(
             cls.objects.exclude(periodicity='one-off').filter(**kwargs)
         )
         periodic = cls.init_periodic_tickets(periodic)
         for o in periodic:
-            objects += get_occurrences(o, until)
+            objects += get_occurrences(o, earliest, until)
         return objects
 
     @classmethod
@@ -59,16 +60,14 @@ class Event(models.Model):
         )
         periodic = cls.init_periodic_tickets(periodic)
         for o in periodic:
-            objects += get_occurrences(o, until)
+            objects += get_occurrences(o, earliest, until)
         return objects
 
     @classmethod
     def init_periodic_tickets(cls, objects):
         dates = tuple(o.date for o in objects)
-        print('dates', dates)
         query = TicketsLeft.objects.filter(date__in=dates)
         tickets_by_dates = {tickets.date: tickets for tickets in query}
-        print('by dates', tickets_by_dates)
         for o in objects:
             tickets = tickets_by_dates.get(o.date)
             if tickets is not None:
@@ -132,15 +131,10 @@ class EventClone:
         return True
 
 
-def get_occurrences(event, until):
+def get_occurrences(event, dtstart, until):
     freq = event.periodicity
-    now = datetime.datetime.now(tz.UTC)
-    curmonth = now.month
-    nextmonth = (curmonth + 1) * (curmonth <= 12)
-    # limit rrule occurences
-    months = [curmonth, nextmonth]
     # retrive rrule corresponding freq value
     rrule_freq = getattr(rrule, freq.upper())
     # cast datetimes via rrule
-    occur = list(rrule.rrule(rrule_freq, dtstart=event.date, until=until, bymonth=months))
-    return [EventClone(event, date=dt) for dt in occur if dt >= now]
+    occur = list(rrule.rrule(rrule_freq, dtstart=dtstart, until=until))
+    return [EventClone(event, date=dt) for dt in occur]
