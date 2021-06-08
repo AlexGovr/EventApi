@@ -88,6 +88,16 @@ class EventClone:
             setattr(self, attr, val)
         for attr, val in attrs.items():
             setattr(self, attr, val)
+    
+    def __eq__(self, other):
+        to_compare = self.fields + ['date']
+        for attr in to_compare:
+            if getattr(self, attr) != getattr(other, attr):
+                return False
+        return True
+
+    def __str__(self):
+        return f'({self.title}, {self.city}, {self.date})'
 
 
 def get_occurrences(event, until):
