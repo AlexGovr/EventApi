@@ -32,12 +32,14 @@ class Event(models.Model):
     def get_month_occurrences(cls, month, title):
         earliest = datetime.datetime.now(tz.UTC).replace(month=month, day=1)
         until = earliest + relativedelta.relativedelta(months=1)
+        until -= datetime.timedelta(days=1)
+        kwargs = {'title': title} if title else {}
         objects = list(cls.objects.filter(date__gte=earliest,
-                                          title=title,
                                           tickets__gt=0,
-                                          periodicity='one-off'))
+                                          periodicity='one-off',
+                                          **kwargs))
         periodic = list(
-            cls.objects.exclude(periodicity='one-off').filter(title=title, tickets__gt=0)
+            cls.objects.exclude(periodicity='one-off').filter(tickets__gt=0, **kwargs)
         )
         for o in periodic:
             objects += get_occurrences(o.date, until, o)
@@ -63,10 +65,12 @@ class Payment(models.Model):
     event = models.ForeignKey(Event, on_delete=models.RESTRICT)
     transaction_id = models.IntegerField(null=False, blank=False, unique=True)
     user_id = models.ForeignKey(User, on_delete=models.RESTRICT)
+    cost = models.FloatField()
 
     def save(self, *args, **kwargs):
         if self.event.tickets <= 0:
             raise ValidationError('error: no tickets for this event')
+        self.cost = self.event.cost
         self.event.tickets -= 1
         self.event.save()
         super().save(*args, **kwargs)
