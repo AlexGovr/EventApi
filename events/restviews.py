@@ -40,9 +40,9 @@ class EventQueryViewset(viewsets.ViewSet):
         if month is None:
             return r404({'detail': f'month value must be specified'})
         try:
-            month = datetime.strptime(month, '%b').month
+            month = parse_month(month)
         except:
-            r404({'detail': f'month value must be one of {self.months}'})
+            return r404({'detail': f'month value must be one of {self.months}, not "{month}"'})
         objects = Event.get_month_occurrences(month, title)
         srl = EventQuerySerializer(objects, many=True)
         return Response(srl.data, status=status.HTTP_200_OK)
@@ -56,3 +56,7 @@ class PaymentViewSet(CreateModelMixin, viewsets.GenericViewSet):
 
 def r404(data):
     return Response(data, status=status.HTTP_400_BAD_REQUEST)
+
+
+def parse_month(monthstr):
+    return datetime.strptime(monthstr, '%b').month
