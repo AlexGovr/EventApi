@@ -78,4 +78,4 @@ def parse_month(monthstr):
 
 
 def parse_datestr(s):
-    return datetime.strptime(s, '%Y-%m-%dT%H:%M')
+    return datetime.strptime(s, '%Y-%m-%d')

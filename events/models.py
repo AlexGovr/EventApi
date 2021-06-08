@@ -1,14 +1,15 @@
 
 
 import datetime
-from dateutil import rrule, relativedelta, tz
+from dateutil import rrule, relativedelta
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.contrib.auth import get_user_model
-from rest_framework.exceptions import ValidationError
-
+from django.utils.timezone import get_default_timezone
+from rest_framework.exceptions import ValidationError as RestValidationError
 
 User = get_user_model()
+
 
 class Event(models.Model):
     title = models.CharField(max_length=200)
@@ -16,7 +17,7 @@ class Event(models.Model):
     tickets = models.IntegerField()
     cost = models.FloatField()
     # serves as a starting point for periodic events
-    date = models.DateTimeField()
+    date = models.DateField()
     periodicity = models.CharField(
         max_length=10,
         choices=(
@@ -31,53 +32,71 @@ class Event(models.Model):
 
     @classmethod
     def get_month_occurrences(cls, month, title):
-        earliest = datetime.datetime.now(tz.UTC)
-        earliest = earliest.replace(month=month, day=1, hour=0, minute=0, second=0)
+        earliest = datetime.date.today().replace(month=month)
+        cur_month = month
+        next_month = (cur_month + 1) * (cur_month < 12)
         until = earliest + relativedelta.relativedelta(months=1)
+        rrule_bymonth = [cur_month, next_month]
         kwargs = {'title': title} if title else {}
-        objects = list(cls.objects.filter(date__gte=earliest,
+        
+        one_off = list(cls.objects.filter(date__gte=earliest,
+                                          date__lte=until,
                                           periodicity='one-off',
                                           **kwargs))
         periodic = list(
             cls.objects.exclude(periodicity='one-off').filter(**kwargs)
         )
-        periodic = cls.init_periodic_tickets(periodic)
+        periodic_casted = []
         for o in periodic:
-            objects += get_occurrences(o, earliest, until)
-        return objects
+            periodic_casted += get_occurrences(o, o.date,
+                                               until,
+                                               rrule_bymonth)
+
+        periodic_casted = cls.init_periodic_tickets(periodic_casted)
+        return periodic_casted + one_off
 
     @classmethod
     def get_upcoming_occurences(cls, city):
-        earliest = datetime.datetime.now(tz.UTC)
-        until = earliest + relativedelta.relativedelta(months=1)
-        objects = list(cls.objects.filter(date__gte=earliest,
+        now = datetime.date.today()
+        until = now + relativedelta.relativedelta(months=1)
+        cur_month = now.month
+        next_month = (cur_month + 1) * (cur_month < 12)
+        rrule_bymonth = [cur_month, next_month]
+
+        one_off = list(cls.objects.filter(date__gte=now,
+                                          date__lte=until,
                                           city=city,
                                           tickets__gt=0,
                                           periodicity='one-off'))
         periodic = list(
-            cls.objects.filter(city=city, tickets__gt=0).exclude(periodicity='one-off')
+            cls.objects.filter(city=city).exclude(periodicity='one-off')
         )
-        periodic = cls.init_periodic_tickets(periodic)
+        periodic_casted = []
         for o in periodic:
-            objects += get_occurrences(o, earliest, until)
-        return objects
+            periodic_casted += [o_ for o_ in  get_occurrences(o, o.date,
+                                                              until,
+                                                              rrule_bymonth)
+                                if o_.date > now]
+        periodic_casted = cls.init_periodic_tickets(periodic_casted)
+        return periodic_casted + one_off
 
     @classmethod
     def init_periodic_tickets(cls, objects):
-        dates = tuple(o.date for o in objects)
-        query = TicketsLeft.objects.filter(date__in=dates)
+        dates = set(o.date for o in objects)
+        events = set(Event.objects.get(id=o.id) for o in objects)
+        query = TicketsLeft.objects.filter(date__in=dates, event__in=events)
         tickets_by_dates = {tickets.date: tickets for tickets in query}
         for o in objects:
             tickets = tickets_by_dates.get(o.date)
             if tickets is not None:
-                o.date = tickets.date
+                o.tickets = tickets.tickets
         return objects
 
 
 class TicketsLeft(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     tickets = models.IntegerField()
-    date = models.DateTimeField()
+    date = models.DateField()
 
 
 class Payment(models.Model):
@@ -91,17 +110,19 @@ class Payment(models.Model):
             try:
                 tickets = TicketsLeft.objects.get(event=self.event, date=date)
                 if tickets.tickets <= 0:
-                    raise ValidationError('error: no tickets for this event')
+                    raise RestValidationError('error: no tickets for this event')
                 tickets.tickets -= 1
                 tickets.date = date
                 tickets.save()
             except ObjectDoesNotExist:
+                if date != self.event.date:
+                    raise RestValidationError('error: wrong event date specified')
                 tickets = TicketsLeft(event=self.event, date=date, tickets=self.event.tickets-1)
                 tickets.save()
 
         else:
             if self.event.tickets <= 0:
-                raise ValidationError('error: no tickets for this event')
+                raise RestValidationError('error: no tickets for this event')
             self.event.tickets -= 1
             self.event.save()
 
@@ -131,10 +152,10 @@ class EventClone:
         return True
 
 
-def get_occurrences(event, dtstart, until):
+def get_occurrences(event, dtstart, until, bymonth):
     freq = event.periodicity
     # retrive rrule corresponding freq value
     rrule_freq = getattr(rrule, freq.upper())
     # cast datetimes via rrule
-    occur = list(rrule.rrule(rrule_freq, dtstart=dtstart, until=until))
-    return [EventClone(event, date=dt) for dt in occur]
+    occur = rrule.rrule(rrule_freq, dtstart=dtstart, until=until, bymonth=bymonth)
+    return [EventClone(event, date=dt.date()) for dt in occur]

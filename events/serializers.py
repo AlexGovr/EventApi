@@ -13,7 +13,7 @@ class EventQuerySerializer(serializers.Serializer):
     city = serializers.CharField(max_length=60)
     tickets = serializers.IntegerField()
     cost = serializers.FloatField()
-    date = serializers.DateTimeField()
+    date = serializers.DateField()
     id = serializers.IntegerField()
 
 
