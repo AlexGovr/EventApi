@@ -2,6 +2,7 @@
 
 import datetime
 from dateutil import rrule, relativedelta, tz
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import ValidationError
@@ -35,12 +36,12 @@ class Event(models.Model):
         until -= datetime.timedelta(days=1)
         kwargs = {'title': title} if title else {}
         objects = list(cls.objects.filter(date__gte=earliest,
-                                          tickets__gt=0,
                                           periodicity='one-off',
                                           **kwargs))
         periodic = list(
-            cls.objects.exclude(periodicity='one-off').filter(tickets__gt=0, **kwargs)
+            cls.objects.exclude(periodicity='one-off').filter(**kwargs)
         )
+        periodic = cls.init_periodic_tickets(periodic)
         for o in periodic:
             objects += get_occurrences(o, until)
         return objects
@@ -56,9 +57,28 @@ class Event(models.Model):
         periodic = list(
             cls.objects.exclude(periodicity='one-off').filter(city=city, tickets__gt=0)
         )
+        periodic = cls.init_periodic_tickets(periodic)
         for o in periodic:
             objects += get_occurrences(o, until)
         return objects
+
+    @classmethod
+    def init_periodic_tickets(cls, objects):
+        dates = tuple(o.date for o in objects)
+        print('dates', dates)
+        query = TicketsLeft.objects.filter(date__in=dates)
+        tickets_by_dates = {tickets.date: tickets for tickets in query}
+        print('by dates', tickets_by_dates)
+        for o in objects:
+            tickets = tickets_by_dates.get(o.date)
+            if tickets is not None:
+                o.date = tickets.date
+        return objects
+
+class TicketsLeft(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+    tickets = models.IntegerField()
+    date = models.DateTimeField()
 
 
 class Payment(models.Model):
@@ -67,12 +87,26 @@ class Payment(models.Model):
     user_id = models.ForeignKey(User, on_delete=models.RESTRICT)
     cost = models.FloatField()
 
-    def save(self, *args, **kwargs):
-        if self.event.tickets <= 0:
-            raise ValidationError('error: no tickets for this event')
+    def save(self, date, *args, **kwargs):
+        if self.event.periodicity != 'one-off':
+            try:
+                tickets = TicketsLeft.objects.get(event=self.event, date=date)
+                if tickets.tickets <= 0:
+                    raise ValidationError('error: no tickets for this event')
+                tickets.tickets -= 1
+                tickets.date = date
+                tickets.save()
+            except ObjectDoesNotExist:
+                tickets = TicketsLeft(event=self.event, date=date, tickets=self.event.tickets-1)
+                tickets.save()
+
+        else:
+            if self.event.tickets <= 0:
+                raise ValidationError('error: no tickets for this event')
+            self.event.tickets -= 1
+            self.event.save()
+
         self.cost = self.event.cost
-        self.event.tickets -= 1
-        self.event.save()
         super().save(*args, **kwargs)
 
 
@@ -83,6 +117,7 @@ class EventClone:
     fields = ['title', 'city', 'cost', 'tickets', ]
 
     def __init__(self, event, **attrs):
+        self.event_object = event
         for attr in self.fields:
             val = getattr(event, attr)
             setattr(self, attr, val)
@@ -95,9 +130,6 @@ class EventClone:
             if getattr(self, attr) != getattr(other, attr):
                 return False
         return True
-
-    def __str__(self):
-        return f'({self.title}, {self.city}, {self.date})'
 
 
 def get_occurrences(event, until):
