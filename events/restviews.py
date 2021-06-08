@@ -5,10 +5,10 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.mixins import CreateModelMixin
-from .models import Event, Transaction
+from .models import Event, Payment
 from .serializers import (EventQuerySerializer,
                           EventSerializer,
-                          TransactionSerializer)
+                          PaymentSerializer)
 
 
 class EventViewset(viewsets.ModelViewSet):
@@ -48,9 +48,9 @@ class EventQueryViewset(viewsets.ViewSet):
         return Response(srl.data, status=status.HTTP_200_OK)
 
 
-class TransactionViewSet(CreateModelMixin, viewsets.GenericViewSet):
-    serializer_class = TransactionSerializer
-    queryset = Transaction.objects.none()
+class PaymentViewSet(CreateModelMixin, viewsets.GenericViewSet):
+    serializer_class = PaymentSerializer
+    queryset = Payment.objects.none()
     permission_classes = [IsAuthenticated]
 
 

@@ -1,6 +1,6 @@
 
 from rest_framework import serializers
-from .models import Event, Transaction
+from .models import Event, Payment
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -16,8 +16,8 @@ class EventQuerySerializer(serializers.Serializer):
     date = serializers.DateTimeField()
 
 
-class TransactionSerializer(serializers.ModelSerializer):
+class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Transaction
+        model = Payment
         fields = '__all__'
         read_only = '__all__'

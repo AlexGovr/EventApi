@@ -59,7 +59,7 @@ class Event(models.Model):
         return objects
 
 
-class Transaction(models.Model):
+class Payment(models.Model):
     event = models.ForeignKey(Event, on_delete=models.RESTRICT)
     transaction_id = models.IntegerField(null=False, blank=False, unique=True)
     user_id = models.ForeignKey(User, on_delete=models.RESTRICT)
