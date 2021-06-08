@@ -36,13 +36,14 @@ class EventQueryViewset(viewsets.ViewSet):
     @action(detail=False, url_path='month')
     def get_month_occurrences(self, request):
         month = request.query_params.get('month')
+        title = request.query_params.get('title')
         if month is None:
             return r404({'detail': f'month value must be specified'})
         try:
             month = datetime.strptime(month, '%b').month
         except:
             r404({'detail': f'month value must be one of {self.months}'})
-        objects = Event.get_month_occurrences(month)
+        objects = Event.get_month_occurrences(month, title)
         srl = EventQuerySerializer(objects, many=True)
         return Response(srl.data, status=status.HTTP_200_OK)
 
