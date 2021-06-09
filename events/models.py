@@ -5,7 +5,6 @@ from dateutil import rrule, relativedelta
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.utils.timezone import get_default_timezone
 from rest_framework.exceptions import ValidationError as RestValidationError
 
 User = get_user_model()
@@ -33,10 +32,8 @@ class Event(models.Model):
     @classmethod
     def get_month_occurrences(cls, month, title):
         earliest = datetime.date.today().replace(month=month)
-        cur_month = month
-        next_month = (cur_month + 1) * (cur_month < 12)
         until = earliest + relativedelta.relativedelta(months=1)
-        rrule_bymonth = [cur_month, next_month]
+        rrule_bymonth = [month]
         kwargs = {'title': title} if title else {}
         
         one_off = list(cls.objects.filter(date__gte=earliest,
@@ -59,9 +56,7 @@ class Event(models.Model):
     def get_upcoming_occurences(cls, city):
         now = datetime.date.today()
         until = now + relativedelta.relativedelta(months=1)
-        cur_month = now.month
-        next_month = (cur_month + 1) * (cur_month < 12)
-        rrule_bymonth = [cur_month, next_month]
+        rrule_bymonth = [now.month, next_month(now.month)]
 
         one_off = list(cls.objects.filter(date__gte=now,
                                           date__lte=until,
@@ -76,7 +71,7 @@ class Event(models.Model):
             periodic_casted += [o_ for o_ in  get_occurrences(o, o.date,
                                                               until,
                                                               rrule_bymonth)
-                                if o_.date > now]
+                                if o_.date >= now]
         periodic_casted = cls.init_periodic_tickets(periodic_casted)
         return periodic_casted + one_off
 
@@ -159,3 +154,7 @@ def get_occurrences(event, dtstart, until, bymonth):
     # cast datetimes via rrule
     occur = rrule.rrule(rrule_freq, dtstart=dtstart, until=until, bymonth=bymonth)
     return [EventClone(event, date=dt.date()) for dt in occur]
+
+
+def next_month(month):
+    return (month + 1) * (month < 12) + (month >= 12)
