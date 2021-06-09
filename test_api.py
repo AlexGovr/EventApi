@@ -1,10 +1,9 @@
 
-import calendar
-from datetime import datetime, timedelta
-from dateutil import tz
+from datetime import date, timedelta, datetime
 from rest_framework.test import APITestCase
 from rest_framework import status
 from events.models import User, Event
+from config.superuser import username, password
 
 
 class EventTests(APITestCase):
@@ -15,19 +14,19 @@ class EventTests(APITestCase):
         u.save()
 
     def test_add_event(self):
-        self.client.login(username='Steven', password='Jobs')
-        date = datetime.today() + timedelta(days=1)
+        self.client.login(username=username, password=password)
+        dt = date.today() + timedelta(days=1)
         events_data = [
             {'title': 'Title1', 'city': 'City1', 'cost': 500,
-             'tickets': 100, 'date': date, 'perodicity': 'one-off'},
+             'tickets': 100, 'date': dt, 'perodicity': 'one-off'},
             {'title': 'Title2', 'city': 'City2', 'cost': 500,
-             'tickets': 100, 'date': date + timedelta(days=3), 'periodicity': 'weekly'},
+             'tickets': 100, 'date': dt + timedelta(days=3), 'periodicity': 'weekly'},
             {'title': 'Title3', 'city': 'City3', 'cost': 500,
-             'tickets': 100, 'date': date + timedelta(days=20), 'periodicity': 'monthly'},
+             'tickets': 100, 'date': dt + timedelta(days=20), 'periodicity': 'monthly'},
             {'title': 'Title4', 'city': 'City3', 'cost': 500,
-             'tickets': 100, 'date': date + timedelta(days=1), 'periodicity': 'yearly'},
+             'tickets': 100, 'date': dt + timedelta(days=1), 'periodicity': 'yearly'},
             {'title': 'Title5', 'city': 'City3', 'cost': 500,
-             'tickets': 3, 'date': date + timedelta(days=10), 'periodicity': 'weekly'},
+             'tickets': 3, 'date': dt + timedelta(days=10), 'periodicity': 'weekly'},
         ]
         for data in events_data:
             response = self.client.post('/event', data=data)
@@ -35,22 +34,23 @@ class EventTests(APITestCase):
 
     def test_get_upcoming(self):
         # prepare data
-        days_delta = -5
         ev_data = {
             'title': 'Title4',
             'city': 'City3',
             'cost': 500,
             'tickets': 100,
-            'date': datetimestr(days_delta),
-            'periodicity': 'weekly'
+            'date': date.today(),
+            'periodicity': 'weekly',
+            'id': 1,
         }
-        Event.objects.create(**ev_data)
+        ev = Event.objects.create(**ev_data)
+        dt = ev.date
         expected = [
-            {**ev_data, 'date': datetimestr(days_delta + 7)},
-            {**ev_data, 'date': datetimestr(days_delta + 14)},
-            {**ev_data, 'date': datetimestr(days_delta + 21)},
-            {**ev_data, 'date': datetimestr(days_delta + 28)},
-            {**ev_data, 'date': datetimestr(days_delta + 35)},
+            {**ev_data, 'date': datetimestr(dt)},
+            {**ev_data, 'date': datetimestr(dt + timedelta(days=7))},
+            {**ev_data, 'date': datetimestr(dt + timedelta(days=14))},
+            {**ev_data, 'date': datetimestr(dt + timedelta(days=21))},
+            {**ev_data, 'date': datetimestr(dt + timedelta(days=28))},
         ]
         _ = [e.pop('periodicity') for e in expected]
         response = self.client.get('/get-events/upcoming?city=City3')
@@ -60,56 +60,70 @@ class EventTests(APITestCase):
 
     def test_get_month(self):
         # prepare data
-        days_delta = -5
+        year = date.today().year
         ev_data = {
             'title': 'Title4',
             'city': 'City3',
             'cost': 500,
             'tickets': 100,
-            'date': datetimestr(days_delta),
-            'periodicity': 'weekly'
+            'date': date(year, 7, 3),
+            'periodicity': 'weekly',
+            'id': 1,
         }
         ev1_data = {
             'title': 'Title5',
             'city': 'City3',
             'cost': 500,
             'tickets': 100,
-            'date': datetimestr(10),
-            'periodicity': 'one-off'
+            'date': date(year, 7, 23),
+            'periodicity': 'one-off',
+            'id': 2,
         }
-        Event.objects.create(**ev_data)
+        ev = Event.objects.create(**ev_data)
         Event.objects.create(**ev1_data)
-        cur_month = calendar.month_abbr[datetime.now().month]
+        dt = ev.date
+        ev1_data['date'] = datetimestr(ev1_data['date'])
         expected = sorted([
-            {**ev_data, 'date': datetimestr(days_delta + 7)},
-            {**ev_data, 'date': datetimestr(days_delta + 14)},
-            {**ev_data, 'date': datetimestr(days_delta + 21)},
+            {**ev_data, 'date': datetimestr(dt)},
+            {**ev_data, 'date': datetimestr(dt + timedelta(days=7))},
+            {**ev_data, 'date': datetimestr(dt + timedelta(days=14))},
+            {**ev_data, 'date': datetimestr(dt + timedelta(days=21))},
+            {**ev_data, 'date': datetimestr(dt + timedelta(days=28))},
             ev1_data,
         ], key=lambda d: d['date'])
         _ = [e.pop('periodicity') for e in expected]
 
-        response = self.client.get(f'/get-events/month?month={cur_month}')
+        response = self.client.get(f'/get-events/month?month=jul')
         self.assertEqual(response.status_code, status.HTTP_200_OK, msg=response.data)
-        data = response.data
+        data = response.json()
+        self.assertEqual(len(data), len(expected))
         data.sort(key=lambda d: d['date'])
-        self.assertEqual(data, expected)
+        for json, exp in zip(data, expected):
+            self.assertDictEqual(json, exp)
 
     def test_payment(self):
         # prepare data
-        self.client.login(username='Steven', password='Jobs')
+        self.client.login(username=username, password=password)
+        year = date.today().year
         ev_data = {
             'title': 'Title4',
             'city': 'City3',
             'cost': 500,
             'tickets': 1,
-            'date': datetimestr(3),
-            'periodicity': 'weekly',
+            'date': date(year, 7, 3),
+            'periodicity': 'one-off',
             'id': 10
         }
-        Event.objects.create(**ev_data)
-
+        ev = Event.objects.create(**ev_data)
+        ev_data['date'] = datetimestr(ev_data['date'])
+        data = {
+            'user_id': 1,
+            'event': 10,
+            'transaction_id': 1,
+            'date': datetimestr(ev.date),
+        }
         # check payment
-        response = self.client.post('/buy-ticket', data={'user_id': 1, 'event': 10, 'transaction_id': 1})
+        response = self.client.post('/buy-ticket', data=data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, msg=response.data)
         # check tickets number changed
         expected = ev_data
@@ -117,15 +131,10 @@ class EventTests(APITestCase):
         response = self.client.get('/event/10')
         self.assertEqual(response.json(), ev_data)
         # get no-tickets response
-        response = self.client.post('/buy-ticket', data={'user_id': 1, 'event': 10, 'transaction_id': 1})
+        response = self.client.post('/buy-ticket', data=data)
+        expected['tickets'] -= 1
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, msg=response.data)
 
 
-def datetimestr(days_delta=0):
-    date = shift_from_now(days_delta)
-    return datetime.strftime(date, '%Y-%m-%dT%H:%M:%SZ')
-
-
-def shift_from_now(days):
-    res = datetime.now(tz.UTC) + timedelta(days=days)
-    return res.replace(microsecond=0)
+def datetimestr(dt):
+    return datetime.strftime(dt, '%Y-%m-%d')
