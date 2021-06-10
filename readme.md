@@ -8,11 +8,11 @@
 4. create superuser
 ```python manage.py createsuperuser```
 and change credentails in config/admin.py
-3. migrate your database:
+5. migrate your database:
 ```python manage.py migrate```
-5. run tests
+6. run tests
 ```python manage.py test```
-5. start Django server
+7. start Django server
 ```python manage.py runserver```
 ## API reference
 An event is represented by a set of fields: id, title, city, date, periodicity, cost, tickets
@@ -20,7 +20,6 @@ periodicity value is one of: weekly, monthly, daily, yearly
 # API methods
 ## Get a list of upcoming events for a specified city:
 ```GET /get-events/upcoming?city=<some-city>```
-
 ## Get a list of events for a specified month:
 ```GET /get-events/upcoming?month=<mon>```
 Title value may be specified optionally
@@ -30,4 +29,4 @@ For month use standard three-letter values (e.g. jan, may, dec, etc)
 ```POST /buy-ticket```
 A request must be authorized and provided with data containing user_id, transaction_id, event_id and event date
 ## Standart REST methods
-Use ```/event/``` and ```/event/pk``` authorized requests urls to manipulate events' data via GET, POST, PUT, PATCH and DELETE.
+Use ```/event/``` and ```/event/<id>``` authorized requests urls to manipulate events' data via GET, POST, PUT, PATCH and DELETE.
